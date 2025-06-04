@@ -5,5 +5,13 @@ numpy>=1.24.0
 matplotlib>=3.6.0
 plotly>=5.15.0
 scikit-learn>=1.3.0
-tensorflow>=2.13.0
 seaborn>=0.12.0
+
+# TensorFlow alternatives for better compatibility
+# tensorflow-cpu>=2.13.0  # Uncomment if you want to try TensorFlow
+# OR use lightweight alternatives:
+xgboost>=1.7.0  # Fast gradient boosting (alternative to LSTM)
+lightgbm>=4.0.0  # Microsoft's gradient boosting
+
+# Additional useful libraries
+python-dotenv>=1.0.0
