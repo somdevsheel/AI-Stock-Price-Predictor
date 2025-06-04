@@ -15,11 +15,22 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import train_test_split
 
-# Deep Learning Libraries
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.optimizers import Adam
+# Try to import TensorFlow with fallback
+TENSORFLOW_AVAILABLE = False
+try:
+    import tensorflow as tf
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Dropout
+    from tensorflow.keras.optimizers import Adam
+    TENSORFLOW_AVAILABLE = True
+    # Set TensorFlow to use CPU only to avoid GPU issues
+    tf.config.set_visible_devices([], 'GPU')
+except ImportError as e:
+    st.warning("⚠️ TensorFlow not available. LSTM model will be disabled.")
+    tf = None
+except Exception as e:
+    st.warning(f"⚠️ TensorFlow import error: {str(e)}. LSTM model will be disabled.")
+    tf = None
 
 # Set page configuration
 st.set_page_config(
@@ -90,6 +101,9 @@ def prepare_lstm_data(data, look_back=60):
 
 def build_lstm_model(input_shape):
     """Build LSTM model architecture"""
+    if not TENSORFLOW_AVAILABLE:
+        raise ImportError("TensorFlow is not available")
+    
     model = Sequential([
         LSTM(50, return_sequences=True, input_shape=input_shape),
         Dropout(0.2),
@@ -126,6 +140,9 @@ def train_linear_regression(data, target_col='Close'):
 
 def train_lstm_model(data, look_back=60):
     """Train LSTM model"""
+    if not TENSORFLOW_AVAILABLE:
+        raise ImportError("TensorFlow is not available for LSTM training")
+    
     X, y, scaler = prepare_lstm_data(data, look_back)
     
     # Reshape for LSTM
@@ -290,10 +307,16 @@ def main():
             max_value=datetime.now()
         )
     
-    # Model selection
+    # Model selection - conditional based on TensorFlow availability
+    if TENSORFLOW_AVAILABLE:
+        model_options = ["Linear Regression", "LSTM"]
+    else:
+        model_options = ["Linear Regression"]
+        st.sidebar.info("💡 LSTM requires TensorFlow. Only Linear Regression is available.")
+    
     model_type = st.sidebar.selectbox(
         "Choose Model Type",
-        ["Linear Regression", "LSTM"],
+        model_options,
         help="Linear Regression: Fast, good for short-term trends\nLSTM: Advanced neural network, better for complex patterns"
     )
     
@@ -308,7 +331,7 @@ def main():
     
     # Advanced settings
     with st.sidebar.expander("⚙️ Advanced Settings"):
-        if model_type == "LSTM":
+        if model_type == "LSTM" and TENSORFLOW_AVAILABLE:
             look_back = st.slider("LSTM Look-back Period", 30, 120, 60)
         else:
             n_lags = st.slider("Number of Lag Features", 3, 10, 5)
@@ -368,7 +391,7 @@ def main():
                     model, processed_data, model_type, prediction_days
                 )
                 
-            else:  # LSTM
+            elif model_type == "LSTM" and TENSORFLOW_AVAILABLE:
                 model, y_test, y_pred, scaler, history = train_lstm_model(stock_data, look_back)
                 
                 # Calculate metrics
@@ -378,6 +401,9 @@ def main():
                 future_predictions = predict_future_prices(
                     model, stock_data, model_type, prediction_days, scaler, look_back
                 )
+            else:
+                st.error("LSTM model is not available. TensorFlow installation required.")
+                return
             
             # Display model performance
             st.subheader("📈 Model Performance")
@@ -442,7 +468,7 @@ def main():
             st.plotly_chart(fig, use_container_width=True)
             
             # Model insights
-            if model_type == "LSTM":
+            if model_type == "LSTM" and TENSORFLOW_AVAILABLE:
                 st.subheader("🧠 LSTM Training Progress")
                 
                 # Plot training history
